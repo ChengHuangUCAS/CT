@@ -39,13 +39,12 @@ public class TicketingDS implements TicketingSystem {
         
         for (int i = 0; i < routenum; i++) {
             this.ticketIds[i] = new AtomicLong(0);
-            this.soldTickets.add(new ArrayList<>());
+            this.soldTickets.add(new ArrayList<ArrayList<Ticket>>());
             for (int j = 0; j < coachnum; j++) {
                 this.soldTickets.get(i).add(new ArrayList<Ticket>());
                 for (int k = 0; k < seatnum; k++) {
                     this.isSeatLocked[i][j][k] = new AtomicBoolean(false);
                     this.isSeatSold[i][j][k] = new BitSet(stationnum - 1);
-//                    for (int l = 0; l < stationnum - 1; l++)
                 }
             }
         }

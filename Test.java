@@ -43,15 +43,12 @@ public class Test {
 
     public static void main(String[] args) throws InterruptedException {
 
-        Thread[] threads;
-        TicketingDS tds;
-        
-        tds = new TicketingDS(1, 2, 5, 10, 1);
-        smallTest(tds);
+        final TicketingDS tds1 = new TicketingDS(1, 2, 5, 10, 1);
+        smallTest(tds1);
         
         for (int t = 1; t <= 128; t *= 2) {
-        	threads = new Thread[t];
-        	tds = new TicketingDS(routenum, coachnum, seatnum, stationnum, t);
+        	final Thread[] threads = new Thread[t];
+        	final TicketingDS tds = new TicketingDS(routenum, coachnum, seatnum, stationnum, t);
         	long start_time = System.currentTimeMillis();
         	test(tds, threads);
         	long end_time = System.currentTimeMillis();
@@ -65,7 +62,7 @@ public class Test {
         
     }
     
-    private static void smallTest(TicketingDS tds) {
+    private static void smallTest(final TicketingDS tds) {
     	Random rand = new Random();
     	Ticket ticket = new Ticket();
     	ArrayList<Ticket> soldTicket = new ArrayList<Ticket>();
@@ -83,7 +80,7 @@ public class Test {
     	}
     }
  
-    private static void test(TicketingDS tds, Thread[] threads) {
+    private static void test(final TicketingDS tds, final Thread[] threads) {
         for (int i = 0; i< threads.length; i++) {
             threads[i] = new Thread(new Runnable() {
                 public void run() {
