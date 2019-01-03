@@ -56,21 +56,21 @@ public class TicketingDS implements TicketingSystem {
     public Ticket buyTicket(String passenger, int route, int departure, int arrival) {
         // 参数检查
         if (route > this.routeNum || departure > this.stationNum || arrival > this.stationNum 
-                || route <= 0 || departure <= 0 || arrival < 0)
+                || route <= 0 || departure <= 0 || arrival < 0 || departure >= arrival)
             return null;
         
         int seat = -1, coach = -1;
         BitSet want = new BitSet(this.stationNum - 1);
         want.set(departure - 1, arrival - 1);
         ArrayList<Integer> lockedSeats = new ArrayList<Integer>();
+        // TODO: 多线程查询
         for (int i = 0; i < this.coachNum; i++) {
             for (int j = 0; j < this.seatNum; j++) {
             	// 测试座位是否被售出
             	if (this.isSeatSold[route - 1][i][j].intersects(want))
             		continue;
                 // 发现可用座位，尝试锁定。如果锁定成功，退出查询；如果锁定失败，记录座位，稍后重新尝试
-                if (!this.isSeatLocked[route - 1][i][j].get() && 
-                		this.isSeatLocked[route - 1][i][j].compareAndSet(false, true)) {
+                if (this.isSeatLocked[route - 1][i][j].compareAndSet(false, true)) {
                 	// 锁定成功后重新检查
                 	if (this.isSeatSold[route - 1][i][j].intersects(want)) {
                 		this.isSeatLocked[route - 1][i][j].set(false);
@@ -98,8 +98,7 @@ public class TicketingDS implements TicketingSystem {
                 if (this.isSeatSold[route - 1][i][j].intersects(want))
             		continue;
                 // 座位仍然可用，再次尝试锁定；锁定失败时需要再次放回列表
-                if (!this.isSeatLocked[route - 1][i][j].get() && 
-                		this.isSeatLocked[route - 1][i][j].compareAndSet(false, true)) {
+                if (this.isSeatLocked[route - 1][i][j].compareAndSet(false, true)) {
                 	if (this.isSeatSold[route - 1][i][j].intersects(want)) {
                 		this.isSeatLocked[route - 1][i][j].set(false);
                 		continue;
@@ -141,7 +140,7 @@ public class TicketingDS implements TicketingSystem {
     public int inquiry(int route, int departure, int arrival) {
         // 参数检查
         if (route > this.routeNum || departure > this.stationNum || arrival > this.stationNum 
-                || route <= 0 || departure <= 0 || arrival < 0)
+                || route <= 0 || departure <= 0 || arrival < 0 || departure >= arrival)
             return 0;
         
         int count = 0;
@@ -164,8 +163,11 @@ public class TicketingDS implements TicketingSystem {
         // 无效票
         if (route <= 0 || route > this.routeNum || coach <= 0 || coach > this.coachNum)
         	return false;
-        if (!soldTickets.get(route - 1).get(coach - 1).contains(ticket))
-            return false;
+        ArrayList<Ticket> soldList = soldTickets.get(route - 1).get(coach - 1);
+        synchronized(soldList) {
+        	if (!soldList.contains(ticket))
+        		return false;
+        }
 
         BitSet sold = new BitSet(this.stationNum - 1);
         sold.set(departure - 1, arrival - 1);
@@ -177,7 +179,6 @@ public class TicketingDS implements TicketingSystem {
         this.isSeatLocked[route - 1][coach - 1][seat - 1].set(false);
         
         // 这张票！不要了！
-        ArrayList<Ticket> soldList = this.soldTickets.get(route - 1).get(coach - 1);
         synchronized(soldList) {
             soldList.remove(ticket);
         }
