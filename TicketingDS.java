@@ -65,23 +65,23 @@ public class TicketingDS implements TicketingSystem {
         // TODO: parallel query?
         for (int i = 0; i < this.coachNum; i++) {
             for (int j = 0; j < this.seatNum; j++) {
-            	// whether this seat is sold?
-            	if (this.isSeatSold[route - 1][i][j].intersects(want))
-            		continue;
+                // whether this seat is sold?
+                if (this.isSeatSold[route - 1][i][j].intersects(want))
+                    continue;
                 // try to lock available seat
                 if (this.isSeatLocked[route - 1][i][j].compareAndSet(false, true)) {
-                	// succeed, ensure it is still available
-                	if (this.isSeatSold[route - 1][i][j].intersects(want)) {
-                		this.isSeatLocked[route - 1][i][j].set(false);
-                		continue;
-                	}
-                	
-                	// ensured, buy it!
+                    // succeed, ensure it is still available
+                    if (this.isSeatSold[route - 1][i][j].intersects(want)) {
+                        this.isSeatLocked[route - 1][i][j].set(false);
+                        continue;
+                    }
+                    
+                    // ensured, buy it!
                     coach = i + 1;
                     seat = j + 1;
                     break;
                 } else
-                	// failed, try again later
+                    // failed, try again later
                     lockedSeats.add(i * this.seatNum + j);
             }
             // found and locked, quit query
@@ -96,13 +96,13 @@ public class TicketingDS implements TicketingSystem {
                 int i = tmp / this.seatNum, j = tmp % this.seatNum;
                 // basically, the same procedure
                 if (this.isSeatSold[route - 1][i][j].intersects(want))
-            		continue;
+                    continue;
                 if (this.isSeatLocked[route - 1][i][j].compareAndSet(false, true)) {
-                	if (this.isSeatSold[route - 1][i][j].intersects(want)) {
-                		this.isSeatLocked[route - 1][i][j].set(false);
-                		continue;
-                	}
-                	
+                    if (this.isSeatSold[route - 1][i][j].intersects(want)) {
+                        this.isSeatLocked[route - 1][i][j].set(false);
+                        continue;
+                    }
+                    
                     coach = i + 1;
                     seat = j + 1;
                     break;
@@ -113,7 +113,7 @@ public class TicketingDS implements TicketingSystem {
         
         // get the ticket
         if (coach != -1) {
-        	this.isSeatSold[route - 1][coach - 1][seat - 1].or(want);
+            this.isSeatSold[route - 1][coach - 1][seat - 1].or(want);
             this.isSeatLocked[route - 1][coach - 1][seat - 1].set(false);
             
             Ticket ticket = new Ticket();
@@ -150,8 +150,8 @@ public class TicketingDS implements TicketingSystem {
         // wait-free traverse
         for (int i = 0; i < this.coachNum; i++)
             for (int j = 0; j < this.seatNum; j++)
-            	if (!this.isSeatSold[route - 1][i][j].intersects(want))
-            		count++;
+                if (!this.isSeatSold[route - 1][i][j].intersects(want))
+                    count++;
         
         return count;
     }
@@ -163,11 +163,11 @@ public class TicketingDS implements TicketingSystem {
         
         // invalid ticket
         if (route <= 0 || route > this.routeNum || coach <= 0 || coach > this.coachNum)
-        	return false;
+            return false;
         ArrayList<Ticket> soldList = soldTickets.get(route - 1).get(coach - 1);
         synchronized(soldList) {
-        	if (!soldList.contains(ticket))
-        		return false;
+            if (!soldList.contains(ticket))
+                return false;
         }
 
         BitSet sold = new BitSet(this.stationNum - 1);
@@ -176,7 +176,7 @@ public class TicketingDS implements TicketingSystem {
         // lock this seat and release it
         // TODO: TTAS -> CLH or MCS?
         while (this.isSeatLocked[route - 1][coach - 1][seat - 1].get() || 
-        		!this.isSeatLocked[route - 1][coach - 1][seat - 1].compareAndSet(false, true)) ;
+                !this.isSeatLocked[route - 1][coach - 1][seat - 1].compareAndSet(false, true)) ;
         this.isSeatSold[route - 1][coach -1][seat - 1].andNot(sold);
         this.isSeatLocked[route - 1][coach - 1][seat - 1].set(false);
         
