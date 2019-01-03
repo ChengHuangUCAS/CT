@@ -14,14 +14,14 @@ public class TicketingDS implements TicketingSystem {
     @SuppressWarnings("unused")
     private int threadNum;
     
-    // 每个座位一个锁，买票/退票时先加锁
+    // a lock per seat for buy and refund
     private AtomicBoolean[][][] isSeatLocked;
-    // 记录每个座位在每个基本区间是否被出售
+    // whether basic sections of a seat is sold or not
     private BitSet[][][] isSeatSold;
-    // 每个车次 route 维护一个自身已售出的id，用来计算实际的tid
-    // TODO: 可能的串行瓶颈：获取tid
+    // ticket id in a route, to calculate global id
+    // TODO: sequential bottleneck?
     private AtomicLong[] ticketIds;
-    // 每个车厢 coach 维护一个已售车票列表
+    // a sold ticket list for each coach
     private ArrayList<ArrayList<ArrayList<Ticket>>> soldTickets;
     
     
@@ -54,7 +54,7 @@ public class TicketingDS implements TicketingSystem {
 
     @Override
     public Ticket buyTicket(String passenger, int route, int departure, int arrival) {
-        // 参数检查
+        // check parameters
         if (route > this.routeNum || departure > this.stationNum || arrival > this.stationNum 
                 || route <= 0 || departure <= 0 || arrival < 0 || departure >= arrival)
             return null;
@@ -63,41 +63,41 @@ public class TicketingDS implements TicketingSystem {
         BitSet want = new BitSet(this.stationNum - 1);
         want.set(departure - 1, arrival - 1);
         ArrayList<Integer> lockedSeats = new ArrayList<Integer>();
-        // TODO: 多线程查询
+        // TODO: parallel query?
         for (int i = 0; i < this.coachNum; i++) {
             for (int j = 0; j < this.seatNum; j++) {
-            	// 测试座位是否被售出
+            	// whether this seat is sold?
             	if (this.isSeatSold[route - 1][i][j].intersects(want))
             		continue;
-                // 发现可用座位，尝试锁定。如果锁定成功，退出查询；如果锁定失败，记录座位，稍后重新尝试
+                // try to lock available seat
                 if (this.isSeatLocked[route - 1][i][j].compareAndSet(false, true)) {
-                	// 锁定成功后重新检查
+                	// succeed, ensure it is still available
                 	if (this.isSeatSold[route - 1][i][j].intersects(want)) {
                 		this.isSeatLocked[route - 1][i][j].set(false);
                 		continue;
                 	}
                 	
-                	// 检查通过
+                	// ensured, buy it!
                     coach = i + 1;
                     seat = j + 1;
                     break;
                 } else
+                	// failed, try again later
                     lockedSeats.add(i * this.seatNum + j);
             }
-            // 已经成功锁定座位，不再继续查找
+            // found and locked, quit query
             if (coach != -1)
                 break;
         }
         
-        // 如果锁定座位失败，从记录中重新尝试锁定
+        // no seat is found, try again
         if (coach == -1) {
             while (lockedSeats.size() != 0) {
-                // 逐个检查
                 int tmp = lockedSeats.remove(0);
                 int i = tmp / this.seatNum, j = tmp % this.seatNum;
+                // basically, the same procedure
                 if (this.isSeatSold[route - 1][i][j].intersects(want))
             		continue;
-                // 座位仍然可用，再次尝试锁定；锁定失败时需要再次放回列表
                 if (this.isSeatLocked[route - 1][i][j].compareAndSet(false, true)) {
                 	if (this.isSeatSold[route - 1][i][j].intersects(want)) {
                 		this.isSeatLocked[route - 1][i][j].set(false);
@@ -112,11 +112,11 @@ public class TicketingDS implements TicketingSystem {
             }
         }
         
-        // 如果成功锁定座位，则出票；否则购票失败
+        // get the ticket
         if (coach != -1) {
         	this.isSeatSold[route - 1][coach - 1][seat - 1].or(want);
             this.isSeatLocked[route - 1][coach - 1][seat - 1].set(false);
-            //出票
+            
             Ticket ticket = new Ticket();
             long routeTid = this.ticketIds[route - 1].getAndIncrement();
             ticket.tid = routeTid * this.routeNum + route;
@@ -126,7 +126,8 @@ public class TicketingDS implements TicketingSystem {
             ticket.seat = seat;
             ticket.departure = departure;
             ticket.arrival = arrival;
-            // 加入已售出列表
+            
+            // add to the sold record
             ArrayList<Ticket> soldList = this.soldTickets.get(route - 1).get(coach - 1);
             synchronized(soldList) {
                 soldList.add(ticket);
@@ -138,7 +139,7 @@ public class TicketingDS implements TicketingSystem {
 
     @Override
     public int inquiry(int route, int departure, int arrival) {
-        // 参数检查
+        // check parameters
         if (route > this.routeNum || departure > this.stationNum || arrival > this.stationNum 
                 || route <= 0 || departure <= 0 || arrival < 0 || departure >= arrival)
             return 0;
@@ -146,7 +147,8 @@ public class TicketingDS implements TicketingSystem {
         int count = 0;
         BitSet want = new BitSet(this.stationNum - 1);
         want.set(departure - 1, arrival - 1);
-        // 无锁遍历
+        
+        // wait-free traverse
         for (int i = 0; i < this.coachNum; i++)
             for (int j = 0; j < this.seatNum; j++)
             	if (!this.isSeatSold[route - 1][i][j].intersects(want))
@@ -160,7 +162,7 @@ public class TicketingDS implements TicketingSystem {
         int route = ticket.route, coach = ticket.coach, seat = ticket.seat;
         int departure = ticket.departure, arrival = ticket.arrival;
         
-        // 无效票
+        // invalid ticket
         if (route <= 0 || route > this.routeNum || coach <= 0 || coach > this.coachNum)
         	return false;
         ArrayList<Ticket> soldList = soldTickets.get(route - 1).get(coach - 1);
@@ -171,14 +173,15 @@ public class TicketingDS implements TicketingSystem {
 
         BitSet sold = new BitSet(this.stationNum - 1);
         sold.set(departure - 1, arrival - 1);
-        // 把这个座位锁住！然后改为未出售！然后赶快释放锁！
-        // TODO: TTAS改为CLH或MCS锁
+        
+        // lock this seat and release it
+        // TODO: TTAS -> CLH or MCS?
         while (this.isSeatLocked[route - 1][coach - 1][seat - 1].get() || 
         		!this.isSeatLocked[route - 1][coach - 1][seat - 1].compareAndSet(false, true)) ;
         this.isSeatSold[route - 1][coach -1][seat - 1].andNot(sold);
         this.isSeatLocked[route - 1][coach - 1][seat - 1].set(false);
         
-        // 这张票！不要了！
+        // remove it from the record
         synchronized(soldList) {
             soldList.remove(ticket);
         }
