@@ -27,7 +27,7 @@ class ThreadId2 {
 
 public class Test {
     
-    final static int threadnum = 8; // concurrent thread number
+    final static int threadnum = 1; // concurrent thread number
     final static int routenum = 10; // route is designed from 1 to 3
     final static int coachnum = 20; // coach is arranged from 1 to 5
     final static int seatnum = 100; // seat is allocated from 1 to 20
@@ -52,7 +52,7 @@ public class Test {
         double throughput;
         System.out.println("==================== Test 1 start ====================");
         System.out.println("route: " + routenum + ", coach: " + coachnum + ", seat: " + seatnum +
-        		", #stations" + stationnum + ", #ops/thread: " + testnum + ", #threads: " + threadnum);
+        		", #stations: " + stationnum + ", #ops/thread: " + testnum + ", #threads: " + threadnum);
         
         final Thread[] threads2 = new Thread[threadnum];
         ops = testnum * threadnum;
@@ -98,9 +98,9 @@ public class Test {
         
         System.out.println("==================== Test 2 start ====================");
         System.out.println("route: " + routenum + ", coach: " + coachnum + ", seat: " + seatnum +
-        		", #stations" + stationnum + ", #ops/thread: " + testnum);
+        		", #stations: " + stationnum + ", #ops/thread: " + testnum);
         
-        for (int t = 1; t <= 128; t *= 2) {
+        for (int t = 1; t <= 64; t *= 2) {
             final Thread[] threads = new Thread[t];
             final TicketingDS tds = new TicketingDS(routenum, coachnum, seatnum, stationnum, t);
             start_time = System.currentTimeMillis();
@@ -141,7 +141,7 @@ public class Test {
                     Random rand = new Random();
                     Ticket ticket = new Ticket();
                     ArrayList<Ticket> soldTicket = new ArrayList<Ticket>();
-                    //System.out.println(ThreadId.get());
+                    //System.out.println(ThreadId2.get());
                     for (int i = 0; i < testnum; i++) {
                         int route = rand.nextInt(routenum) + 1;
                         int departure = rand.nextInt(stationnum - 1) + 1;
@@ -171,7 +171,7 @@ public class Test {
             threads[i] = new Thread(new Runnable() {
                 public void run() {
                     Random rand = new Random();                    
-                    //System.out.println(ThreadId.get());
+                    //System.out.println(ThreadId2.get());
                     for (int i = 0; i < testnum; i++) {
                         int route = rand.nextInt(routenum) + 1;
                         int departure = rand.nextInt(stationnum - 1) + 1;
@@ -199,7 +199,7 @@ public class Test {
                     Random rand = new Random();
                     Ticket ticket = new Ticket();
                     ArrayList<Ticket> soldTicket = new ArrayList<Ticket>();
-                    //System.out.println(ThreadId.get());
+                    //System.out.println(ThreadId2.get());
                     for (int i = 0; i < testnum; i++) {
                         int sel = rand.nextInt(inqpc);
                         if (sel % 2 == 0 && soldTicket.size() > 0) { // return ticket
@@ -250,7 +250,7 @@ public class Test {
                     Ticket ticket = new Ticket();
                     ArrayList<Ticket> soldTicket = new ArrayList<Ticket>();
                     
-                    //System.out.println(ThreadId.get());
+                    //System.out.println(ThreadId2.get());
                     for (int i = 0; i < testnum; i++) {
                         int sel = rand.nextInt(inqpc);
                         if (sel % 2 == 0) { // buy ticket
@@ -290,7 +290,7 @@ public class Test {
                     Ticket ticket = new Ticket();
                     ArrayList<Ticket> soldTicket = new ArrayList<Ticket>();
                     
-                    //System.out.println(ThreadId.get());
+                    //System.out.println(ThreadId2.get());
                     for (int i = 0; i < testnum; i++) {
                         int sel = rand.nextInt(inqpc);
                         if (0 <= sel && sel < retpc && soldTicket.size() > 0) { // return ticket

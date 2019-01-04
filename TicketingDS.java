@@ -3,7 +3,21 @@ package ticketingsystem;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+
+class ThreadId3 {
+    private static final AtomicInteger nextId = new AtomicInteger(0);
+    private static final ThreadLocal<Integer> threadId =
+        new ThreadLocal<Integer>() {
+            @Override protected Integer initialValue() {
+                return nextId.getAndIncrement();
+        }
+    };
+    public static int get() {
+        return threadId.get();
+    }
+}
 
 public class TicketingDS implements TicketingSystem {
     
@@ -143,18 +157,17 @@ public class TicketingDS implements TicketingSystem {
         if (route > this.routeNum || departure > this.stationNum || arrival > this.stationNum 
                 || route <= 0 || departure <= 0 || arrival < 0 || departure >= arrival)
             return 0;
-        
+
         int count = 0;
         BitSet want = new BitSet(this.stationNum - 1);
         want.set(departure - 1, arrival - 1);
-        
         // wait-free traverse
         for (int i = 0; i < this.coachNum; i++)
             for (int j = 0; j < this.seatNum; j++)
                 if (!this.isSeatSold[route - 1][i][j].intersects(want))
                     count++;
-        
         return count;
+        
     }
 
     @Override
