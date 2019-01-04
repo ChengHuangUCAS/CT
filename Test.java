@@ -33,7 +33,7 @@ public class Test {
     final static int seatnum = 100; // seat is allocated from 1 to 20
     final static int stationnum = 10; // station is designed from 1 to 5
 
-    final static int testnum = 50000;
+    final static int testnum = 10000;
     final static int retpc = 10; // return ticket operation is 10% percent
     final static int buypc = 40; // buy ticket operation is 30% percent
     final static int inqpc = 100; //inquiry ticket operation is 60% percent
@@ -52,7 +52,7 @@ public class Test {
         double throughput;
         System.out.println("==================== Test 1 start ====================");
         System.out.println("route: " + routenum + ", coach: " + coachnum + ", seat: " + seatnum +
-        		", #stations: " + stationnum + ", #ops/thread: " + testnum + ", #threads: " + threadnum);
+                ", #stations: " + stationnum + ", #ops/thread: " + testnum + ", #threads: " + threadnum);
         
         final Thread[] threads2 = new Thread[threadnum];
         ops = testnum * threadnum;
@@ -98,19 +98,21 @@ public class Test {
         
         System.out.println("==================== Test 2 start ====================");
         System.out.println("route: " + routenum + ", coach: " + coachnum + ", seat: " + seatnum +
-        		", #stations: " + stationnum + ", #ops/thread: " + testnum);
+                ", #stations: " + stationnum + "" + testnum);
         
         for (int t = 1; t <= 64; t *= 2) {
             final Thread[] threads = new Thread[t];
-            final TicketingDS tds = new TicketingDS(routenum, coachnum, seatnum, stationnum, t);
-            start_time = System.currentTimeMillis();
-            test(tds, threads);
-            end_time = System.currentTimeMillis();
-            elapsed = (end_time - start_time) / 1000.0;
-            ops = testnum * t;
-            throughput = ops / elapsed;
-            System.out.printf("#threads: %3d, #operations: %3dw, time: %fs, throughtput: %.2f ops/s\n",
-            		t, ops / 10000, elapsed, throughput);
+            for (int i = 1; i < 10; i += 2) {
+                final TicketingDS tds = new TicketingDS(routenum, coachnum, seatnum, stationnum, t);
+                start_time = System.currentTimeMillis();
+                test(tds, threads);
+                end_time = System.currentTimeMillis();
+                elapsed = (end_time - start_time) / 1000.0;
+                ops = testnum * i * t;
+                throughput = ops / elapsed;
+                System.out.printf("#threads: %3d, #ops/thread: %2dw, #operations: %3dw, time: %fs, throughtput: %.2f ops/s\n",
+                        t, testnum * i / 10000, ops / 10000, elapsed, throughput);
+            }
         }
         System.out.println("=================== Test 2 finished ===================");
         

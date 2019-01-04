@@ -80,7 +80,7 @@ public class TicketingDS implements TicketingSystem {
         // ---> too complicated to synchronize, quit
         for (int i = 0; i < this.coachNum; i++) {
             for (int j = 0; j < this.seatNum; j++) {
-            	// whether this seat is sold?
+                // whether this seat is sold?
                 if (this.isSeatSold[route - 1][i][j].intersects(want))
                     continue;
                 // try to lock available seat
