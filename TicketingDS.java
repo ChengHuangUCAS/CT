@@ -11,7 +11,6 @@ public class TicketingDS implements TicketingSystem {
     private int coachNum;
     private int seatNum;
     private int stationNum;
-    @SuppressWarnings("unused")
     private int threadNum;
     
     // a lock per seat for buy and refund
@@ -20,6 +19,7 @@ public class TicketingDS implements TicketingSystem {
     private BitSet[][][] isSeatSold;
     // ticket id in a route, to calculate global id
     // TODO: sequential bottleneck?
+    // ---> No, an independent ticket id for a coach make it worse
     private AtomicLong[] ticketIds;
     // a sold ticket list for each coach
     private ArrayList<ArrayList<ArrayList<Ticket>>> soldTickets;
@@ -63,9 +63,10 @@ public class TicketingDS implements TicketingSystem {
         want.set(departure - 1, arrival - 1);
         ArrayList<Integer> lockedSeats = new ArrayList<Integer>();
         // TODO: parallel query?
+        // ---> too complicated to synchronize, quit
         for (int i = 0; i < this.coachNum; i++) {
             for (int j = 0; j < this.seatNum; j++) {
-                // whether this seat is sold?
+            	// whether this seat is sold?
                 if (this.isSeatSold[route - 1][i][j].intersects(want))
                     continue;
                 // try to lock available seat
@@ -173,17 +174,18 @@ public class TicketingDS implements TicketingSystem {
         BitSet sold = new BitSet(this.stationNum - 1);
         sold.set(departure - 1, arrival - 1);
         
-        // lock this seat and release it
-        // TODO: TTAS -> CLH or MCS?
-        while (this.isSeatLocked[route - 1][coach - 1][seat - 1].get() || 
-                !this.isSeatLocked[route - 1][coach - 1][seat - 1].compareAndSet(false, true)) ;
-        this.isSeatSold[route - 1][coach -1][seat - 1].andNot(sold);
-        this.isSeatLocked[route - 1][coach - 1][seat - 1].set(false);
-        
         // remove it from the record
         synchronized(soldList) {
             soldList.remove(ticket);
         }
+        
+        // lock this seat and release it
+        // TODO: TTAS -> CLH or MCS?
+        // ---> Not necessary, refunding is the most efficient method and the least used
+        while (this.isSeatLocked[route - 1][coach - 1][seat - 1].get() || 
+                !this.isSeatLocked[route - 1][coach - 1][seat - 1].compareAndSet(false, true)) ;
+        this.isSeatSold[route - 1][coach -1][seat - 1].andNot(sold);
+        this.isSeatLocked[route - 1][coach - 1][seat - 1].set(false);
         
         return true;
     }

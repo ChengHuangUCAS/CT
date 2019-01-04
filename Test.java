@@ -27,9 +27,9 @@ class ThreadId2 {
 
 public class Test {
     
-//  final static int threadnum = 16; // concurrent thread number
-    final static int routenum = 5; // route is designed from 1 to 3
-    final static int coachnum = 8; // coach is arranged from 1 to 5
+    final static int threadnum = 8; // concurrent thread number
+    final static int routenum = 10; // route is designed from 1 to 3
+    final static int coachnum = 20; // coach is arranged from 1 to 5
     final static int seatnum = 100; // seat is allocated from 1 to 20
     final static int stationnum = 10; // station is designed from 1 to 5
 
@@ -46,23 +46,73 @@ public class Test {
         final TicketingDS tds1 = new TicketingDS(1, 2, 5, 10, 1);
         smallTest(tds1);
         
-        System.out.println("==================== Test start ====================");
+        long start_time, end_time;
+        double elapsed;
+        int ops;
+        double throughput;
+        System.out.println("==================== Test 1 start ====================");
         System.out.println("route: " + routenum + ", coach: " + coachnum + ", seat: " + seatnum +
-                ", #ops/thread: " + testnum);
+        		", #stations" + stationnum + ", #ops/thread: " + testnum + ", #threads: " + threadnum);
+        
+        final Thread[] threads2 = new Thread[threadnum];
+        ops = testnum * threadnum;
+        
+        final TicketingDS tds2 = new TicketingDS(routenum, coachnum, seatnum, stationnum, threadnum);
+        start_time = System.currentTimeMillis();
+        queryTest(tds2, threads2);
+        end_time = System.currentTimeMillis();
+        elapsed = (end_time - start_time) / 1000.0;
+        throughput = ops / elapsed;
+        System.out.println("-- Query test --");
+        System.out.printf("#operations: %3dw, time: %fs, throughtput: %.2f ops/s\n", ops / 10000, elapsed, throughput);
+        
+        final TicketingDS tds3 = new TicketingDS(routenum, coachnum, seatnum, stationnum, threadnum);
+        start_time = System.currentTimeMillis();
+        buyTest(tds3, threads2);
+        end_time = System.currentTimeMillis();
+        elapsed = (end_time - start_time) / 1000.0;
+        throughput = ops / elapsed;
+        System.out.println("-- Buy test --");
+        System.out.printf("#operations: %3dw, time: %fs, throughtput: %.2f ops/s\n", ops / 10000, elapsed, throughput);
+        
+        final TicketingDS tds4 = new TicketingDS(routenum, coachnum, seatnum, stationnum, threadnum);
+        start_time = System.currentTimeMillis();
+        buyAndRefundTest(tds4, threads2);
+        end_time = System.currentTimeMillis();
+        elapsed = (end_time - start_time) / 1000.0;
+        throughput = ops / elapsed;
+        System.out.println("-- Buy and refund test --");
+        System.out.printf("#operations: %3dw, time: %fs, throughtput: %.2f ops/s\n", ops / 10000, elapsed, throughput);
+                
+        final TicketingDS tds5 = new TicketingDS(routenum, coachnum, seatnum, stationnum, threadnum);
+        start_time = System.currentTimeMillis();
+        buyAndQueryTest(tds5, threads2);
+        end_time = System.currentTimeMillis();
+        elapsed = (end_time - start_time) / 1000.0;
+        throughput = ops / elapsed;
+        System.out.println("-- Buy and query test --");
+        System.out.printf("#operations: %3dw, time: %fs, throughtput: %.2f ops/s\n", ops / 10000, elapsed, throughput);
+        
+        System.out.println("=================== Test 1 finished ===================");
+        
+        
+        System.out.println("==================== Test 2 start ====================");
+        System.out.println("route: " + routenum + ", coach: " + coachnum + ", seat: " + seatnum +
+        		", #stations" + stationnum + ", #ops/thread: " + testnum);
         
         for (int t = 1; t <= 128; t *= 2) {
             final Thread[] threads = new Thread[t];
             final TicketingDS tds = new TicketingDS(routenum, coachnum, seatnum, stationnum, t);
-            long start_time = System.currentTimeMillis();
+            start_time = System.currentTimeMillis();
             test(tds, threads);
-            long end_time = System.currentTimeMillis();
-            double elapsed = (end_time - start_time) / 1000.0;
-            int ops = testnum * t;
-            double throughput = ops / elapsed;
+            end_time = System.currentTimeMillis();
+            elapsed = (end_time - start_time) / 1000.0;
+            ops = testnum * t;
+            throughput = ops / elapsed;
             System.out.printf("#threads: %3d, #operations: %3dw, time: %fs, throughtput: %.2f ops/s\n",
             		t, ops / 10000, elapsed, throughput);
         }
-        System.out.println("=================== Test finished ===================");
+        System.out.println("=================== Test 2 finished ===================");
         
     }
     
@@ -83,7 +133,155 @@ public class Test {
                 System.out.println("ErrOfRefund2");
         }
     }
- 
+    
+    private static void buyTest(final TicketingDS tds, final Thread[] threads) {
+        for (int i = 0; i< threads.length; i++) {
+            threads[i] = new Thread(new Runnable() {
+                public void run() {
+                    Random rand = new Random();
+                    Ticket ticket = new Ticket();
+                    ArrayList<Ticket> soldTicket = new ArrayList<Ticket>();
+                    //System.out.println(ThreadId.get());
+                    for (int i = 0; i < testnum; i++) {
+                        int route = rand.nextInt(routenum) + 1;
+                        int departure = rand.nextInt(stationnum - 1) + 1;
+                        int arrival = departure + rand.nextInt(stationnum - departure) + 1; // arrival is always greater than departure
+                        if ((ticket = tds.buyTicket(passenger, route, departure, arrival)) != null) 
+                            soldTicket.add(ticket);
+                    }
+                }
+            });
+              threads[i].start();
+        }
+    
+        for (int i = 0; i< threads.length; i++) {
+            try {
+                threads[i].join();
+            } catch (InterruptedException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        
+    }
+    
+    
+    private static void queryTest(final TicketingDS tds, final Thread[] threads) {
+        for (int i = 0; i< threads.length; i++) {
+            threads[i] = new Thread(new Runnable() {
+                public void run() {
+                    Random rand = new Random();                    
+                    //System.out.println(ThreadId.get());
+                    for (int i = 0; i < testnum; i++) {
+                        int route = rand.nextInt(routenum) + 1;
+                        int departure = rand.nextInt(stationnum - 1) + 1;
+                        int arrival = departure + rand.nextInt(stationnum - departure) + 1; // arrival is always greater than departure
+                        tds.inquiry(route, departure, arrival);
+                    }
+                }
+            });
+              threads[i].start();
+        }
+        for (int i = 0; i< threads.length; i++) {
+            try {
+                threads[i].join();
+            } catch (InterruptedException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+    }
+    
+    private static void buyAndRefundTest(final TicketingDS tds, final Thread[] threads) {
+        for (int i = 0; i< threads.length; i++) {
+            threads[i] = new Thread(new Runnable() {
+                public void run() {
+                    Random rand = new Random();
+                    Ticket ticket = new Ticket();
+                    ArrayList<Ticket> soldTicket = new ArrayList<Ticket>();
+                    //System.out.println(ThreadId.get());
+                    for (int i = 0; i < testnum; i++) {
+                        int sel = rand.nextInt(inqpc);
+                        if (sel % 2 == 0 && soldTicket.size() > 0) { // return ticket
+                            int select = rand.nextInt(soldTicket.size());
+                            if ((ticket = soldTicket.remove(select)) != null) {
+                                if (tds.refundTicket(ticket)) {
+                                } else {
+                                    System.out.println("ErrOfRefund1");
+                                    System.out.println(ticket.tid + " " + ticket.passenger + 
+                                            " route:" + ticket.route + " coach:" + ticket.coach + 
+                                            " from:" + ticket.departure + " to:" + ticket.arrival + 
+                                            " seat:" + ticket.seat);
+                                    System.out.flush();
+                                }
+                            } else {
+                                System.out.println("ErrOfRefund2");
+                                System.out.flush();
+                            }
+                        } else { // buy ticket
+                            int route = rand.nextInt(routenum) + 1;
+                            int departure = rand.nextInt(stationnum - 1) + 1;
+                            int arrival = departure + rand.nextInt(stationnum - departure) + 1; // arrival is always greater than departure
+                            if ((ticket = tds.buyTicket(passenger, route, departure, arrival)) != null) 
+                                soldTicket.add(ticket);
+                        } 
+                    }
+                }
+            });
+              threads[i].start();
+        }
+    
+        for (int i = 0; i< threads.length; i++) {
+            try {
+                threads[i].join();
+            } catch (InterruptedException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        
+    }
+  
+    private static void buyAndQueryTest(final TicketingDS tds, final Thread[] threads) {
+        for (int i = 0; i< threads.length; i++) {
+            threads[i] = new Thread(new Runnable() {
+                public void run() {
+                    Random rand = new Random();
+                    Ticket ticket = new Ticket();
+                    ArrayList<Ticket> soldTicket = new ArrayList<Ticket>();
+                    
+                    //System.out.println(ThreadId.get());
+                    for (int i = 0; i < testnum; i++) {
+                        int sel = rand.nextInt(inqpc);
+                        if (sel % 2 == 0) { // buy ticket
+                            int route = rand.nextInt(routenum) + 1;
+                            int departure = rand.nextInt(stationnum - 1) + 1;
+                            int arrival = departure + rand.nextInt(stationnum - departure) + 1; // arrival is always greater than departure
+                            if ((ticket = tds.buyTicket(passenger, route, departure, arrival)) != null) 
+                                soldTicket.add(ticket);
+                        } else if (buypc <= sel && sel < inqpc) { // inquiry ticket
+                            int route = rand.nextInt(routenum) + 1;
+                            int departure = rand.nextInt(stationnum - 1) + 1;
+                            int arrival = departure + rand.nextInt(stationnum - departure) + 1; // arrival is always greater than departure
+                            tds.inquiry(route, departure, arrival);
+                        }
+                    }
+                }
+            });
+              threads[i].start();
+        }
+    
+        for (int i = 0; i< threads.length; i++) {
+            try {
+                threads[i].join();
+            } catch (InterruptedException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        
+    }
+
     private static void test(final TicketingDS tds, final Thread[] threads) {
         for (int i = 0; i< threads.length; i++) {
             threads[i] = new Thread(new Runnable() {
@@ -99,8 +297,6 @@ public class Test {
                             int select = rand.nextInt(soldTicket.size());
                         if ((ticket = soldTicket.remove(select)) != null) {
                                 if (tds.refundTicket(ticket)) {
-//                                    System.out.println("TicketRefund" + " " + ticket.tid + " " + ticket.passenger + " " + ticket.route + " " + ticket.coach  + " " + ticket.departure + " " + ticket.arrival + " " + ticket.seat);
-//                                    System.out.flush();
                                 } else {
                                     System.out.println("ErrOfRefund1");
                                     System.out.println(ticket.tid + " " + ticket.passenger + 
@@ -117,34 +313,15 @@ public class Test {
                             int route = rand.nextInt(routenum) + 1;
                             int departure = rand.nextInt(stationnum - 1) + 1;
                             int arrival = departure + rand.nextInt(stationnum - departure) + 1; // arrival is always greater than departure
-                            if ((ticket = tds.buyTicket(passenger, route, departure, arrival)) != null) {
+                            if ((ticket = tds.buyTicket(passenger, route, departure, arrival)) != null) 
                                 soldTicket.add(ticket);
-//                                ps.println(ticket.tid + " " + ticket.passenger + 
-//                                          " route:" + ticket.route + " coach:" + ticket.coach + 
-//                                          " from:" + ticket.departure + " to:" + ticket.arrival + 
-//                                          " seat:" + ticket.seat);
-//                                System.out.println("TicketBought" + " " + ticket.tid + " " + ticket.passenger + " " + ticket.route + " " + ticket.coach + " " + ticket.departure + " " + ticket.arrival + " " + ticket.seat);
-//                                System.out.flush();
-                            } else {
-//                                System.out.println("TicketSoldOut" + " " + route+ " " + departure+ " " + arrival);
-//                                System.out.flush();
-                            }
                         } else if (buypc <= sel && sel < inqpc) { // inquiry ticket
-                            
                             int route = rand.nextInt(routenum) + 1;
                             int departure = rand.nextInt(stationnum - 1) + 1;
                             int arrival = departure + rand.nextInt(stationnum - departure) + 1; // arrival is always greater than departure
                             tds.inquiry(route, departure, arrival);
-//                            int leftTicket = tds.inquiry(route, departure, arrival);
-//                            System.out.println("RemainTicket" + " " + leftTicket + " " + route+ " " + departure+ " " + arrival);
-//                            System.out.flush();  
-                                                
                         }
                     }
-//                } catch (FileNotFoundException e) {
-//                  // TODO Auto-generated catch block
-//                  e.printStackTrace();
-//              }
                 }
             });
               threads[i].start();
