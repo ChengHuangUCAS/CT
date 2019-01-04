@@ -3,21 +3,7 @@ package ticketingsystem;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-
-class ThreadId3 {
-    private static final AtomicInteger nextId = new AtomicInteger(0);
-    private static final ThreadLocal<Integer> threadId =
-        new ThreadLocal<Integer>() {
-            @Override protected Integer initialValue() {
-                return nextId.getAndIncrement();
-        }
-    };
-    public static int get() {
-        return threadId.get();
-    }
-}
 
 public class TicketingDS implements TicketingSystem {
     
@@ -182,15 +168,11 @@ public class TicketingDS implements TicketingSystem {
         synchronized(soldList) {
             if (!soldList.contains(ticket))
                 return false;
+            soldList.remove(ticket);
         }
 
         BitSet sold = new BitSet(this.stationNum - 1);
         sold.set(departure - 1, arrival - 1);
-        
-        // remove it from the record
-        synchronized(soldList) {
-            soldList.remove(ticket);
-        }
         
         // lock this seat and release it
         // TODO: TTAS -> CLH or MCS?

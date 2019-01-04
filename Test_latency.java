@@ -7,25 +7,8 @@ package ticketingsystem;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-class ThreadId2 {
-    // Atomic integer containing the next thread ID to be assigned
-    private static final AtomicInteger nextId = new AtomicInteger(0);
 
-    // Thread local variable containing each thread's ID
-    private static final ThreadLocal<Integer> threadId =
-        new ThreadLocal<Integer>() {
-            @Override protected Integer initialValue() {
-                return nextId.getAndIncrement();
-        }
-    };
-
-    // Returns the current thread's unique ID, assigning it if necessary
-    public static int get() {
-        return threadId.get();
-    }
-}
-
-public class Test {
+public class Test_latency {
     
     final static int threadnum = 16; // concurrent thread number
     final static int routenum = 10; // route is designed from 1 to 3
@@ -43,63 +26,15 @@ public class Test {
 
     public static void main(String[] args) throws InterruptedException {
 
-        final TicketingDS tds1 = new TicketingDS(1, 2, 5, 10, 1);
-        smallTest(tds1);
-        
         long start_time, end_time;
         double elapsed;
         int ops;
         double throughput;
-        System.out.println("==================== Test 1 start ====================");
-        System.out.println("route: " + routenum + ", coach: " + coachnum + ", seat: " + seatnum +
-                ", #stations: " + stationnum + ", #ops/thread: " + testnum + ", #threads: " + threadnum);
-        
-        final Thread[] threads2 = new Thread[threadnum];
-        ops = testnum * threadnum;
-        
-        final TicketingDS tds2 = new TicketingDS(routenum, coachnum, seatnum, stationnum, threadnum);
-        start_time = System.currentTimeMillis();
-        queryTest(tds2, threads2);
-        end_time = System.currentTimeMillis();
-        elapsed = (end_time - start_time) / 1000.0;
-        throughput = ops / elapsed;
-        System.out.println("-- Query test --");
-        System.out.printf("#operations: %3dw, time: %fs, throughtput: %.2f ops/s\n", ops / 10000, elapsed, throughput);
-        
-        final TicketingDS tds3 = new TicketingDS(routenum, coachnum, seatnum, stationnum, threadnum);
-        start_time = System.currentTimeMillis();
-        buyTest(tds3, threads2);
-        end_time = System.currentTimeMillis();
-        elapsed = (end_time - start_time) / 1000.0;
-        throughput = ops / elapsed;
-        System.out.println("-- Buy test --");
-        System.out.printf("#operations: %3dw, time: %fs, throughtput: %.2f ops/s\n", ops / 10000, elapsed, throughput);
-        
-        final TicketingDS tds4 = new TicketingDS(routenum, coachnum, seatnum, stationnum, threadnum);
-        start_time = System.currentTimeMillis();
-        buyAndRefundTest(tds4, threads2);
-        end_time = System.currentTimeMillis();
-        elapsed = (end_time - start_time) / 1000.0;
-        throughput = ops / elapsed;
-        System.out.println("-- Buy and refund test --");
-        System.out.printf("#operations: %3dw, time: %fs, throughtput: %.2f ops/s\n", ops / 10000, elapsed, throughput);
-                
-        final TicketingDS tds5 = new TicketingDS(routenum, coachnum, seatnum, stationnum, threadnum);
-        start_time = System.currentTimeMillis();
-        buyAndQueryTest(tds5, threads2);
-        end_time = System.currentTimeMillis();
-        elapsed = (end_time - start_time) / 1000.0;
-        throughput = ops / elapsed;
-        System.out.println("-- Buy and query test --");
-        System.out.printf("#operations: %3dw, time: %fs, throughtput: %.2f ops/s\n", ops / 10000, elapsed, throughput);
-        
-        System.out.println("=================== Test 1 finished ===================");
-        
         
         System.out.println("==================== Test 2 start ====================");
         System.out.println("route: " + routenum + ", coach: " + coachnum + ", seat: " + seatnum +
                 ", #stations: " + stationnum);
-       
+        
         for (int t = 1; t <= 512; t *= 2) {
             final Thread[] threads = new Thread[t];
             for (int i = 1; i < 10; i += 2) {
@@ -288,10 +223,14 @@ public class Test {
         for (int i = 0; i< threads.length; i++) {
             threads[i] = new Thread(new Runnable() {
                 public void run() {
+                    long start_time, end_time;
+                    double elapsed;
 //                    int magic_count = 0;
                     Random rand = new Random();
                     Ticket ticket = new Ticket();
                     ArrayList<Ticket> soldTicket = new ArrayList<Ticket>();
+
+                    start_time = System.currentTimeMillis();
                     
                     //System.out.println(ThreadId2.get());
                     for (int i = 0; i < testnum; i++) {
@@ -328,6 +267,10 @@ public class Test {
                         }
                     }
 //                    if (magic_count > 2500) System.out.println(magic_count);
+                    end_time = System.currentTimeMillis();
+                    elapsed = (end_time - start_time) / 1.0;
+                    double latency = elapsed / testnum;
+                    System.out.printf("latency: %f ms/op\n", latency);
                 }
             });
               threads[i].start();
