@@ -48,7 +48,7 @@ public class Test {
         
         System.out.println("==================== Test start ====================");
         System.out.println("route: " + routenum + ", coach: " + coachnum + ", seat: " + seatnum +
-                ", #ops/thread:" + testnum);
+                ", #ops/thread: " + testnum);
         
         for (int t = 1; t <= 128; t *= 2) {
             final Thread[] threads = new Thread[t];
@@ -59,8 +59,8 @@ public class Test {
             double elapsed = (end_time - start_time) / 1000.0;
             int ops = testnum * t;
             double throughput = ops / elapsed;
-            System.out.println("#threads: " + t + ", #operations: " + ops + ", time: " + elapsed +
-                    "s, throughtput = " + throughput + "ops/s");
+            System.out.printf("#threads: %3d, #operations: %3dw, time: %fs, throughtput: %.2f ops/s\n",
+            		t, ops / 10000, elapsed, throughput);
         }
         System.out.println("=================== Test finished ===================");
         
